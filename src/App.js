@@ -31,6 +31,7 @@ class App extends Component {
         loading: false,
         education_modal: false,
         experience_modal: false,
+        cv_history: []
     }
 
     // constructor(props) {
@@ -66,13 +67,16 @@ class App extends Component {
         const res = await db.get(public_hex)
         console.log('componentWillMount', res)
         // const 
-        if (res._id) 
-            this.setState({ 
-                user_info_name: res.data.user_info_name,
-                user_info_email: res.data.user_info_email,
-                user_info_education: res.data.user_info_education,
-                user_info_experience: res.data.user_info_experience
+        if (res[0]._id) {
+            await this.setState({ 
+                user_info_name: res[0].data.user_info_name,
+                user_info_email: res[0].data.user_info_email,
+                user_info_education: res[0].data.user_info_education,
+                user_info_experience: res[0].data.user_info_experience,
+                cv_history: res[0].data.cv_history
             })
+        }
+            
                 // console.log('new state: ', this.state)
         // })
     }
@@ -117,21 +121,15 @@ class App extends Component {
         console.log(this.state.user_info_experience)
     }
 
-    handleUpdateUserData = async () => {
-        const { user_info_name, user_info_email, user_info_education, user_info_experience, db, public_hex } = this.state
-        const data = { user_info_name, user_info_email, user_info_education, user_info_experience }
-        console.log('ALL USER_INFO: ', data)
-        await db.put({ _id: public_hex, data })
-
-        await this.handleUploadCVToIPFS()
-    }
-
     handleUploadCVToIPFS = async () => {
         const cv = document.getElementById('cv-preview')
         const pdf_output = await html2pdf().from(cv).outputPdf()
         const cv_buffer = Buffer.from(pdf_output, 'binary')
         const uploaded_file = await ipfs.files.add(cv_buffer)
         console.log('uploaded_file: ', uploaded_file)
+        await this.setState(prevState => ({
+            cv_history: [...prevState.cv_history, uploaded_file[0]]
+        }))
         let today = new Date()
         let dd = today.getDate()
         let mm = today.getMonth() + 1
@@ -147,16 +145,23 @@ class App extends Component {
         const filename = `${this.state.user_info_name}_${today}`
 
         html2pdf(cv, { filename })
+
+        const { user_info_name, user_info_email, user_info_education, user_info_experience, db, public_hex, cv_history } = this.state
+        
+        const data = { user_info_name, user_info_email, user_info_education, user_info_experience, cv_history }
+        console.log('ALL USER_INFO: ', data)
+        await db.put({ _id: public_hex, data })
     }
     
     render() {
         const { public_hex } = this.state
 
+        if (this.state.user_info_name) {
         return (
           <MDBContainer>
             <h2>Decentralized CVs</h2>
             <p>Your public hex code: {public_hex}</p>
-            <MDBBtn color="green" onClick={this.handleUpdateUserData}>Save Changes</MDBBtn>
+            <MDBBtn color="green" onClick={this.handleUploadCVToIPFS}>Save Changes</MDBBtn>
             <MDBRow>
                 <MDBCol>
                     <MDBInput
@@ -382,6 +387,9 @@ class App extends Component {
             </MDBModal>
           </MDBContainer>
         )
+        } else {
+            return <div>Loading...</div>
+        } 
     }
 }
 
