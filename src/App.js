@@ -18,11 +18,12 @@ class App extends Component {
         db: null, 
         public_hex: null,
         education: '',
-        user_info: {
-            data: {
-                education: null
-            }
-        },
+        user_info_name: '',
+        user_info_address: '',
+        user_info_email: '',
+        user_info_phone_number: '',
+        user_info_education: [],
+        user_info_experience: [],
         loading: false,
         education_modal: false,
         experience_modal: false,
@@ -64,10 +65,17 @@ class App extends Component {
                 public_hex
             })
             
-            const user_info = await db.get(public_hex)
-            console.log('constructor user_info: ', user_info[0])
-            if (user_info[0]) 
-                this.setState({ user_info: user_info[0] })
+            const res = await db.get(public_hex)
+            const { _id, data } = res[0]
+            console.log('constructor', res)
+            if (_id) 
+                this.setState({ 
+                    user_info_name: data.user_info_name,
+                    user_info_email: data.user_info_email,
+                    user_info_education: data.user_info_education,
+                    user_info_experience: data.user_info_experience
+                })
+                // console.log('new state: ', this.state)
         })
     }
 
@@ -77,28 +85,18 @@ class App extends Component {
         this.setState({ [e.target.id]: e.target.value })
     }
 
-    handleSubmit = async (e) => {
-        e.preventDefault()
-
-        this.setState({ loading: true })
-        const { db, education, public_hex } = this.state
-
-        const data = { education }
-        await db.put({ _id: public_hex, data })
-        await this.reloadUserInfo()
-    }
-
     reloadUserInfo = async () => {
         const { db, public_hex } = this.state 
         console.log('reloading user info')
 
         const user_info = await db.get(public_hex)
-        console.log('user_info: ', user_info[0])
-        this.setState({ user_info: user_info[0], loading: false })
+        // console.log('user_info: ', user_info[0])
+        // this.setState({ user_info: user_info[0], loading: false })
     }
 
     handleAddEducation = async () => {
         const { school, degree, course, education_start_date, education_end_date } = this.state 
+
         const education_data = {
             school,
             degree,
@@ -106,7 +104,12 @@ class App extends Component {
             education_start_date,
             education_end_date
         }
-        console.log('education_data: ', education_data)
+        console.log(education_data)
+        this.setState(prevState => ({
+            user_info_education: [...prevState.user_info_education, education_data]
+        }))
+        this.setState({ education_modal: !this.state.education_modal })
+        console.log(this.state.user_info_education)
     }
 
     handleAddExperience = async () => {
@@ -118,32 +121,82 @@ class App extends Component {
             experience_end_date, 
             job_description
         }
-        console.log('experience_data: ', experience_data)
+        this.setState(prevState => ({
+            user_info_experience: [...prevState.user_info_experience, experience_data]
+        }))
+        this.setState({ experience_modal: !this.state.experience_modal })
+        console.log(this.state.user_info_experience)
+    }
+
+    handleUpdateUserData = async () => {
+        const { user_info_name, user_info_email, user_info_education, user_info_experience, db, public_hex } = this.state
+        const data = { user_info_name, user_info_email, user_info_education, user_info_experience }
+        console.log('ALL USER_INFO: ', data)
+        await db.put({ _id: public_hex, data })
     }
     
     render() {
-        const { public_hex, user_info, loading } = this.state
-        // console.log('user_info: ', user_info)
-        let user_info_json = JSON.stringify(user_info)
+        const { public_hex } = this.state
 
         return (
           <MDBContainer>
             <h2>Decentralized CVs</h2>
             <p>Your public hex code: {public_hex}</p>
-            {/* <input type='text' id='education' onChange={this.handleOnChange} />
-            <button onClick={this.handleSubmit}>Submit</button> */}
-
-            {/* <p>user_info: {user_info_json}</p>
-            <p>user_info education: {loading ? '' : user_info.data.education}</p> */}
+            <MDBBtn color="green" onClick={this.handleUpdateUserData}>Save Changes</MDBBtn>
             <MDBRow>
                 <MDBCol>
+                    <MDBInput
+                        label="Your name"
+                        icon="user"
+                        group
+                        type="text"
+                        validate
+                        error="wrong"
+                        success="right"
+                        id='user_info_name'
+                        onChange={this.handleOnChange}
+                        value={this.state.user_info_name}
+                    />
+                    {this.state.user_info_name}
+                    <MDBInput
+                        label="Your email"
+                        icon="envelope"
+                        group
+                        type="email"
+                        validate
+                        error="wrong"
+                        success="right"
+                        id='user_info_email'
+                        onChange={this.handleOnChange}
+                        value={this.state.user_info_email}
+                    />
+                    {this.state.user_info_email}
                     <MDBRow>
                         <MDBCol><h1 class="h4 mb-4">Education</h1></MDBCol>
                         <MDBCol><MDBBtn color="primary" onClick={() => this.setState({ education_modal: !this.state.education_modal })}>+</MDBBtn></MDBCol>
+                        {this.state.user_info_education.map((e) => {
+                            return (
+                                <div>
+                                    <p>{e.school}</p>
+                                    <p>{e.degree} - {e.course}</p>
+                                    <p>{e.education_start_date} - {e.education_end_date}</p>
+                                </div>
+                            )
+                        })}
                     </MDBRow>
                     <MDBRow>
                         <MDBCol><h1 class="h4 mb-4">Experience</h1></MDBCol>
                         <MDBCol><MDBBtn color="primary" onClick={() => this.setState({ experience_modal: !this.state.experience_modal })}>+</MDBBtn></MDBCol>
+                        {this.state.user_info_experience.map((e) => {
+                            return (
+                                <div>
+                                    <p>{e.company}</p>
+                                    <p>{e.position}</p>
+                                    <p>{e.experience_start_date} - {e.experience_end_date}</p>
+                                    <p>{e.job_description}</p>
+                                </div>
+                            )
+                        })}
                     </MDBRow>
                 </MDBCol>
                 <br />
