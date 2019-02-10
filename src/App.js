@@ -4,7 +4,8 @@ import OrbitDB from 'orbit-db'
 import { 
     MDBContainer, MDBRow, MDBCol, MDBBtn,
     MDBModal, MDBModalHeader, MDBModalBody, MDBModalFooter,
-    MDBInput
+    MDBInput,
+    MDBCard, MDBCardBody
 } from 'mdbreact'
 
 import '@fortawesome/fontawesome-free/css/all.min.css'
@@ -85,15 +86,6 @@ class App extends Component {
         this.setState({ [e.target.id]: e.target.value })
     }
 
-    reloadUserInfo = async () => {
-        const { db, public_hex } = this.state 
-        console.log('reloading user info')
-
-        const user_info = await db.get(public_hex)
-        // console.log('user_info: ', user_info[0])
-        // this.setState({ user_info: user_info[0], loading: false })
-    }
-
     handleAddEducation = async () => {
         const { school, degree, course, education_start_date, education_end_date } = this.state 
 
@@ -134,6 +126,8 @@ class App extends Component {
         console.log('ALL USER_INFO: ', data)
         await db.put({ _id: public_hex, data })
     }
+
+
     
     render() {
         const { public_hex } = this.state
@@ -202,7 +196,36 @@ class App extends Component {
                 <br />
                 <br />
                 <MDBCol>
-                    PDF PREVIEW
+                    <h1>PDF PREVIEW</h1>
+                    <MDBContainer>
+                        <MDBCard>
+                            <MDBCardBody>
+                                <h1>{this.state.user_info_name}</h1>
+                                <h1>{this.state.user_info_email}</h1>
+                                <h1>Education</h1>
+                                {this.state.user_info_education.map((e) => {
+                                    return (
+                                        <div>
+                                            <p>{e.school}</p>
+                                            <p>{e.degree} - {e.course}</p>
+                                            <p>{e.education_start_date} - {e.education_end_date}</p>
+                                        </div>
+                                    )
+                                })}
+                                <h1>Experience</h1>
+                                {this.state.user_info_experience.map((e) => {
+                                    return (
+                                        <div>
+                                            <p>{e.company}</p>
+                                            <p>{e.position}</p>
+                                            <p>{e.experience_start_date} - {e.experience_end_date}</p>
+                                            <p>{e.job_description}</p>
+                                        </div>
+                                    )
+                                })}
+                            </MDBCardBody>
+                        </MDBCard>
+                    </MDBContainer>
                 </MDBCol>
             </MDBRow>
 

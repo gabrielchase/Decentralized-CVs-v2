@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "html2pdf.js": "^0.9.1",
     "ipfs": "^0.33.0",
     "mdbreact": "^4.10.0",
     "orbit-db": "^0.19.9",
