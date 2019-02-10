@@ -1,5 +1,4 @@
 import React, { Component } from'react'
-import IPFS from 'ipfs'
 import OrbitDB from 'orbit-db'
 import { 
     MDBContainer, MDBRow, MDBCol, MDBBtn,
@@ -7,14 +6,18 @@ import {
     MDBInput,
     MDBCard, MDBCardBody
 } from 'mdbreact'
+import html2pdf from 'html2pdf.js'
+import ipfs from './ipfs'
 
 import '@fortawesome/fontawesome-free/css/all.min.css'
 import 'bootstrap-css-only/css/bootstrap.min.css'
 import 'mdbreact/dist/css/mdb.css'
 
+
+
+
 class App extends Component {
     state = {
-        ipfs: null,
         orbitdb: null,
         db: null, 
         public_hex: null,
@@ -30,54 +33,48 @@ class App extends Component {
         experience_modal: false,
     }
 
-    constructor(props) {
-        super(props)
+    // constructor(props) {
+    async componentWillMount() {
+        // super(props)
         console.log('hi')
     
-        const ipfs = new IPFS({
-            EXPERIMENTAL: {
-                pubsub: true
-            }
-        })
+        // ipfs.on('ready', async () => {
+        console.log('ipfs ready: ', ipfs)
+
+        //Create OrbitDB instance
+        const orbitdb = new OrbitDB(ipfs)
+        console.log('orbitdb ready')
+
+        const public_hex = orbitdb.key.getPublic('hex')
+        console.log('public_hex: ', public_hex)
+        const access = {
+            // Give write access to ourselves
+            write: [public_hex],
+        }
     
-        ipfs.on('ready', async () => {
-            console.log('ipfs ready')
-    
-            //Create OrbitDB instance
-            const orbitdb = new OrbitDB(ipfs)
-            console.log('orbitdb ready')
-    
-            const public_hex = orbitdb.key.getPublic('hex')
-            console.log('public_hex: ', public_hex)
-            const access = {
-                // Give write access to ourselves
-                write: [public_hex],
-            }
+        const db = await orbitdb.docstore('decentralized-cvs', access)
+        await db.load()
+        console.log('db address', db.address.toString())
         
-            const db = await orbitdb.docstore('decentralized-cvs', access)
-            await db.load()
-            console.log('db address', db.address.toString())
-            
-            //store ipfs and orbitdb in state
-            this.setState({
-                ipfs,
-                orbitdb,
-                db,
-                public_hex
-            })
-            
-            const res = await db.get(public_hex)
-            const { _id, data } = res[0]
-            console.log('constructor', res)
-            if (_id) 
-                this.setState({ 
-                    user_info_name: data.user_info_name,
-                    user_info_email: data.user_info_email,
-                    user_info_education: data.user_info_education,
-                    user_info_experience: data.user_info_experience
-                })
-                // console.log('new state: ', this.state)
+        //store ipfs and orbitdb in state
+        this.setState({
+            orbitdb,
+            db,
+            public_hex
         })
+        
+        const res = await db.get(public_hex)
+        console.log('componentWillMount', res)
+        // const 
+        if (res._id) 
+            this.setState({ 
+                user_info_name: res.data.user_info_name,
+                user_info_email: res.data.user_info_email,
+                user_info_education: res.data.user_info_education,
+                user_info_experience: res.data.user_info_experience
+            })
+                // console.log('new state: ', this.state)
+        // })
     }
 
     handleOnChange = (e) => {
@@ -125,9 +122,32 @@ class App extends Component {
         const data = { user_info_name, user_info_email, user_info_education, user_info_experience }
         console.log('ALL USER_INFO: ', data)
         await db.put({ _id: public_hex, data })
+
+        await this.handleUploadCVToIPFS()
     }
 
+    handleUploadCVToIPFS = async () => {
+        const cv = document.getElementById('cv-preview')
+        const pdf_output = await html2pdf().from(cv).outputPdf()
+        const cv_buffer = Buffer.from(pdf_output, 'binary')
+        const uploaded_file = await ipfs.files.add(cv_buffer)
+        console.log('uploaded_file: ', uploaded_file)
+        let today = new Date()
+        let dd = today.getDate()
+        let mm = today.getMonth() + 1
+        let yyyy = today.getFullYear()
 
+        if (dd < 10) 
+            dd = '0' + dd
+
+        if (mm < 10) 
+            mm = '0' + mm
+
+        today = `${mm}-${dd}-${yyyy}`
+        const filename = `${this.state.user_info_name}_${today}`
+
+        html2pdf(cv, { filename })
+    }
     
     render() {
         const { public_hex } = this.state
@@ -151,7 +171,6 @@ class App extends Component {
                         onChange={this.handleOnChange}
                         value={this.state.user_info_name}
                     />
-                    {this.state.user_info_name}
                     <MDBInput
                         label="Your email"
                         icon="envelope"
@@ -164,68 +183,73 @@ class App extends Component {
                         onChange={this.handleOnChange}
                         value={this.state.user_info_email}
                     />
-                    {this.state.user_info_email}
                     <MDBRow>
                         <MDBCol><h1 class="h4 mb-4">Education</h1></MDBCol>
                         <MDBCol><MDBBtn color="primary" onClick={() => this.setState({ education_modal: !this.state.education_modal })}>+</MDBBtn></MDBCol>
-                        {this.state.user_info_education.map((e) => {
-                            return (
-                                <div>
-                                    <p>{e.school}</p>
-                                    <p>{e.degree} - {e.course}</p>
-                                    <p>{e.education_start_date} - {e.education_end_date}</p>
-                                </div>
-                            )
-                        })}
                     </MDBRow>
+                    {this.state.user_info_education.map((e) => {
+                        return (
+                            <div>
+                                <p>{e.school}</p>
+                                <p>{e.degree} - {e.course}</p>
+                                <p>{e.education_start_date} - {e.education_end_date}</p>
+                                <br />
+                            </div>
+                        )
+                    })}
                     <MDBRow>
                         <MDBCol><h1 class="h4 mb-4">Experience</h1></MDBCol>
                         <MDBCol><MDBBtn color="primary" onClick={() => this.setState({ experience_modal: !this.state.experience_modal })}>+</MDBBtn></MDBCol>
-                        {this.state.user_info_experience.map((e) => {
-                            return (
-                                <div>
-                                    <p>{e.company}</p>
-                                    <p>{e.position}</p>
-                                    <p>{e.experience_start_date} - {e.experience_end_date}</p>
-                                    <p>{e.job_description}</p>
-                                </div>
-                            )
-                        })}
                     </MDBRow>
+                    {this.state.user_info_experience.map((e) => {
+                        return (
+                            <div>
+                                <p>{e.company}</p>
+                                <p>{e.position}</p>
+                                <p>{e.experience_start_date} - {e.experience_end_date}</p>
+                                <p>{e.job_description}</p>
+                                <br />
+                            </div>
+                        )
+                    })}
                 </MDBCol>
                 <br />
                 <br />
                 <MDBCol>
                     <h1>PDF PREVIEW</h1>
-                    <MDBContainer>
-                        <MDBCard>
-                            <MDBCardBody>
-                                <h1>{this.state.user_info_name}</h1>
-                                <h1>{this.state.user_info_email}</h1>
-                                <h1>Education</h1>
-                                {this.state.user_info_education.map((e) => {
-                                    return (
-                                        <div>
-                                            <p>{e.school}</p>
-                                            <p>{e.degree} - {e.course}</p>
-                                            <p>{e.education_start_date} - {e.education_end_date}</p>
-                                        </div>
-                                    )
-                                })}
-                                <h1>Experience</h1>
-                                {this.state.user_info_experience.map((e) => {
-                                    return (
-                                        <div>
-                                            <p>{e.company}</p>
-                                            <p>{e.position}</p>
-                                            <p>{e.experience_start_date} - {e.experience_end_date}</p>
-                                            <p>{e.job_description}</p>
-                                        </div>
-                                    )
-                                })}
-                            </MDBCardBody>
-                        </MDBCard>
-                    </MDBContainer>
+                    <div id='cv-preview'>
+                        <MDBContainer>
+                            <MDBCard>
+                                <MDBCardBody>
+                                    <h1>{this.state.user_info_name}</h1>
+                                    <h1>{this.state.user_info_email}</h1>
+                                    <h1>Education</h1>
+                                    {this.state.user_info_education.map((e) => {
+                                        return (
+                                            <div>
+                                                <p>{e.school}</p>
+                                                <p>{e.degree} - {e.course}</p>
+                                                <p>{e.education_start_date} - {e.education_end_date}</p>
+                                                <br />
+                                            </div>
+                                        )
+                                    })}
+                                    <h1>Experience</h1>
+                                    {this.state.user_info_experience.map((e) => {
+                                        return (
+                                            <div>
+                                                <p>{e.company}</p>
+                                                <p>{e.position}</p>
+                                                <p>{e.experience_start_date} - {e.experience_end_date}</p>
+                                                <p>{e.job_description}</p>
+                                                <br />
+                                            </div>
+                                        )
+                                    })}
+                                </MDBCardBody>
+                            </MDBCard>
+                        </MDBContainer>
+                    </div>
                 </MDBCol>
             </MDBRow>
 
