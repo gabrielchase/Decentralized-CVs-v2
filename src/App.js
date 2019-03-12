@@ -4,7 +4,7 @@ import {
     MDBContainer, MDBRow, MDBCol, MDBBtn,
     MDBModal, MDBModalHeader, MDBModalBody, MDBModalFooter,
     MDBInput,
-    MDBCard, MDBCardBody
+    MDBCard, MDBCardBody, MDBCardTitle, MDBCardText
 } from 'mdbreact'
 import html2pdf from 'html2pdf.js'
 import ipfs from './ipfs'
@@ -31,7 +31,8 @@ class App extends Component {
         loading: false,
         education_modal: false,
         experience_modal: false,
-        cv_history: []
+        cv_history: [],
+        custom_css: ''
     }
 
     // constructor(props) {
@@ -63,22 +64,26 @@ class App extends Component {
             db,
             public_hex
         })
-        
-        const res = await db.get(public_hex)
-        console.log('componentWillMount', res)
-        // const 
-        if (res[0]._id) {
-            await this.setState({ 
-                user_info_name: res[0].data.user_info_name,
-                user_info_email: res[0].data.user_info_email,
-                user_info_education: res[0].data.user_info_education,
-                user_info_experience: res[0].data.user_info_experience,
-                cv_history: res[0].data.cv_history
-            })
+        await this.getUser(public_hex)
+    }
+
+    getUser = async (public_hex) => {
+        const res = await this.state.db.get(public_hex)
+        console.log('getting user with public_hex: ', public_hex)
+        console.log(res)
+        try {
+            if (res[0]._id) {
+                await this.setState({ 
+                    user_info_name: res[0].data.user_info_name,
+                    user_info_email: res[0].data.user_info_email,
+                    user_info_education: res[0].data.user_info_education,
+                    user_info_experience: res[0].data.user_info_experience,
+                    cv_history: res[0].data.cv_history
+                })
+            }
+        } catch (err) {
+            console.log('err: ', err)
         }
-            
-                // console.log('new state: ', this.state)
-        // })
     }
 
     handleOnChange = (e) => {
@@ -125,11 +130,11 @@ class App extends Component {
         const cv = document.getElementById('cv-preview')
         const pdf_output = await html2pdf().from(cv).outputPdf()
         const cv_buffer = Buffer.from(pdf_output, 'binary')
-        const uploaded_file = await ipfs.files.add(cv_buffer)
-        console.log('uploaded_file: ', uploaded_file)
-        await this.setState(prevState => ({
-            cv_history: [...prevState.cv_history, uploaded_file[0]]
-        }))
+        // const uploaded_file = await ipfs.files.add(cv_buffer)
+        // console.log('uploaded_file: ', uploaded_file)
+        // await this.setState(prevState => ({
+        //     cv_history: [...prevState.cv_history, uploaded_file[0]]
+        // }))
         let today = new Date()
         let dd = today.getDate()
         let mm = today.getMonth() + 1
@@ -152,16 +157,59 @@ class App extends Component {
         console.log('ALL USER_INFO: ', data)
         await db.put({ _id: public_hex, data })
     }
+
+    onHexcodeChange = async (e) => {
+        e.preventDefault()
+
+        this.setState({ public_hex: e.target.value })
+        await this.getUser(e.target.value)
+    }
+    
+    deleteEducation = (exp_id) => {
+        const { user_info_education } = this.state 
+        console.log(this.state.user_info_education)
+        const index = user_info_education.findIndex(exp => exp._id === exp_id)
+        this.setState(prevState => ({
+            user_info_education: [...prevState.user_info_education.slice(0,index), ...prevState.user_info_education.slice(index+1)]
+        }))
+    }
+
+    deleteExperience = (exp_id) => {
+        const { user_info_experience } = this.state 
+        console.log(this.state.user_info_experience)
+        const index = user_info_experience.findIndex(exp => exp._id === exp_id)
+        this.setState(prevState => ({
+            user_info_experience: [...prevState.user_info_experience.slice(0,index), ...prevState.user_info_experience.slice(index+1)]
+        }))
+    }
+
+    handleCustomCSSChange = (e) => {
+        e.preventDefault()
+        this.setState({ custom_css: e.target.value })
+    }
     
     render() {
         const { public_hex } = this.state
 
-        if (this.state.user_info_name) {
+        // if (this.state.user_info_name) {
         return (
           <MDBContainer>
+            <br/>
             <h2>Decentralized CVs</h2>
-            <p>Your public hex code: {public_hex}</p>
-            <MDBBtn color="green" onClick={this.handleUploadCVToIPFS}>Save Changes</MDBBtn>
+            <MDBRow>
+                <MDBCol>
+                    <p>Please save your hex code to access your information</p>
+                    <p>Your public hex code: </p>
+                    <MDBInput value={public_hex} onChange={this.onHexcodeChange}/>
+                </MDBCol>
+            </MDBRow>
+            
+            <MDBRow>
+                <MDBCol>
+                    <MDBBtn className="float-right" color="green" onClick={this.handleUploadCVToIPFS}>Save Changes</MDBBtn>
+                </MDBCol>
+            </MDBRow>
+            
             <MDBRow>
                 <MDBCol>
                     <MDBInput
@@ -174,8 +222,10 @@ class App extends Component {
                         success="right"
                         id='user_info_name'
                         onChange={this.handleOnChange}
-                        value={this.state.user_info_name}
+                        value={this.state.user_info_name ? this.state.user_info_name : ''}
                     />
+                </MDBCol>
+                <MDBCol>
                     <MDBInput
                         label="Your email"
                         icon="envelope"
@@ -186,42 +236,72 @@ class App extends Component {
                         success="right"
                         id='user_info_email'
                         onChange={this.handleOnChange}
-                        value={this.state.user_info_email}
+                        value={this.state.user_info_email ? this.state.user_info_email : ''}
                     />
+                </MDBCol>
+            </MDBRow>
+            <MDBRow>
+                <MDBCol>
                     <MDBRow>
                         <MDBCol><h1 class="h4 mb-4">Education</h1></MDBCol>
-                        <MDBCol><MDBBtn color="primary" onClick={() => this.setState({ education_modal: !this.state.education_modal })}>+</MDBBtn></MDBCol>
+                        <MDBCol><MDBBtn color="primary" size="sm" onClick={() => this.setState({ education_modal: !this.state.education_modal })}>+</MDBBtn></MDBCol>
                     </MDBRow>
+                    
                     {this.state.user_info_education.map((e) => {
                         return (
-                            <div>
-                                <p>{e.school}</p>
-                                <p>{e.degree} - {e.course}</p>
-                                <p>{e.education_start_date} - {e.education_end_date}</p>
-                                <br />
-                            </div>
+                            <MDBCard className="w-75 mb-4">
+                                <MDBCardBody>
+                                    <MDBCardTitle>{e.school}<MDBBtn className="float-right" color="danger" size="sm" onClick={() => this.deleteEducation(e._id)}>x</MDBBtn></MDBCardTitle>
+                                    <MDBCardText>
+                                        {e.degree} - {e.course}
+                                        <br/>
+                                        {e.education_start_date} - {e.education_end_date}
+                                    </MDBCardText>
+                                </MDBCardBody>
+                            </MDBCard>
                         )
                     })}
+                    <br/>
                     <MDBRow>
                         <MDBCol><h1 class="h4 mb-4">Experience</h1></MDBCol>
-                        <MDBCol><MDBBtn color="primary" onClick={() => this.setState({ experience_modal: !this.state.experience_modal })}>+</MDBBtn></MDBCol>
+                        <MDBCol><MDBBtn color="primary" size="sm" onClick={() => this.setState({ experience_modal: !this.state.experience_modal })}>+</MDBBtn></MDBCol>
                     </MDBRow>
                     {this.state.user_info_experience.map((e) => {
                         return (
-                            <div>
-                                <p>{e.company}</p>
-                                <p>{e.position}</p>
-                                <p>{e.experience_start_date} - {e.experience_end_date}</p>
-                                <p>{e.job_description}</p>
-                                <br />
-                            </div>
+                            <MDBCard className="w-75 mb-4">
+                                <MDBCardBody>
+                                    <MDBCardTitle>{e.company}<MDBBtn className="float-right" color="danger" size="sm" onClick={() => this.deleteExperience(e._id)}>x</MDBBtn></MDBCardTitle>
+                                    <MDBCardText>
+                                        {e.position}
+                                        <br/>
+                                        {e.experience_start_date} - {e.experience_end_date}
+                                        <br/>
+                                        {e.job_description}
+                                    </MDBCardText>
+                                </MDBCardBody>
+                            </MDBCard>
                         )
                     })}
+                    <MDBRow>
+                        <MDBCol>
+                        
+                                    <div className="form-group">
+                                        <h1 class="h4 mb-4">Custom CSS</h1>
+                                        <textarea
+                                            className="form-control"
+                                            id="exampleFormControlTextarea1"
+                                            rows="5"
+                                            onChange={this.handleCustomCSSChange}
+                                        />
+                                    </div>
+                        </MDBCol>
+                    </MDBRow>
                 </MDBCol>
+                
                 <br />
                 <br />
                 <MDBCol>
-                    <h1>PDF PREVIEW</h1>
+                    <h1><strong>PDF Preview</strong></h1>
                     <div id='cv-preview'>
                         <MDBContainer>
                             <MDBCard>
@@ -255,6 +335,7 @@ class App extends Component {
                             </MDBCard>
                         </MDBContainer>
                     </div>
+                    <br/><br/>
                 </MDBCol>
             </MDBRow>
 
@@ -387,9 +468,6 @@ class App extends Component {
             </MDBModal>
           </MDBContainer>
         )
-        } else {
-            return <div>Loading...</div>
-        } 
     }
 }
 
