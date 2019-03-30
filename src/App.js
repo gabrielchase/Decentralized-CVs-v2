@@ -13,7 +13,15 @@ import '@fortawesome/fontawesome-free/css/all.min.css'
 import 'bootstrap-css-only/css/bootstrap.min.css'
 import 'mdbreact/dist/css/mdb.css'
 
-const CUSTOM_CSS_FIELDS = ['custom_css_name', 'custom_css_user_info', 'custom_css_section_title']
+const CUSTOM_CSS_FIELDS = [
+    'custom_css_name', 
+    'custom_css_user_info', 
+    'custom_css_section_title', 
+    'custom_css_university_company', 
+    'custom_css_course_position',
+    'custom_css_date',
+    'custom_css_description'
+]
 
 
 class App extends Component {
@@ -34,30 +42,67 @@ class App extends Component {
         cv_history: [],
         custom_css: '',
         mode: 'user-info',
+
         custom_css_name: {
-            color: 'red',
-            fontSize: '50px'
+            color: 'black',
+            fontSize: '18px'
         },
         custom_css_user_info: {
-            color: 'blue',
-            fontSize: '25px'
+            color: 'black',
+            fontSize: '18px'
         },
         custom_css_section_title: {
-            color: 'green',
-            fontSize: '25px'
+            color: 'black',
+            fontSize: '18px'
         },
+        custom_css_university_company: {
+            color: 'black',
+            fontSize: '18px'
+        },
+        custom_css_course_position: {
+            color: 'black',
+            fontSize: '18px'
+        },
+        custom_css_date: {
+            color: 'black',
+            fontSize: '18px'
+        },
+        custom_css_description: {
+            color: 'black',
+            fontSize: '18px'
+        },
+
         custom_css_name_temp: JSON.stringify({
-            color: 'red',
-            fontSize: '50px'
+            color: 'black',
+            fontSize: '18px'
         }),
         custom_css_user_info_temp: JSON.stringify({
-            color: 'blue',
-            fontSize: '25px'
+            color: 'black',
+            fontSize: '18px'
         }),
         custom_css_section_title_temp: JSON.stringify({
-            color: 'green',
-            fontSize: '25px'
+            color: 'black',
+            fontSize: '18px'
         }),
+        custom_css_university_company_temp: JSON.stringify({
+            color: 'black',
+            fontSize: '18px'
+        }),
+        custom_css_course_position_temp: JSON.stringify({
+            color: 'black',
+            fontSize: '18px'
+        }),
+        custom_css_date_temp: JSON.stringify({
+            color: 'black',
+            fontSize: '18px'
+        }),
+        custom_css_description_temp: JSON.stringify({
+            color: 'black',
+            fontSize: '18px'
+        }),
+
+
+        errors: []
     }
 
     // constructor(props) {
@@ -105,6 +150,23 @@ class App extends Component {
                     user_info_phone_number: res[0].data.user_info_phone_number,
                     user_info_education: res[0].data.user_info_education,
                     user_info_experience: res[0].data.user_info_experience,
+
+                    custom_css_name: res[0].data.custom_css_name,
+                    custom_css_user_info: res[0].data.custom_css_user_info,
+                    custom_css_section_title: res[0].data.custom_css_section_title,
+                    custom_css_university_company: res[0].data.custom_css_university_company,
+                    custom_css_course_position: res[0].data.custom_css_course_position,
+                    custom_css_date: res[0].data.custom_css_date,
+                    custom_css_description: res[0].data.custom_css_description,
+
+                    custom_css_name_temp: JSON.stringify(res[0].data.custom_css_name),
+                    custom_css_user_info_temp: JSON.stringify(res[0].data.custom_css_user_info),
+                    custom_css_section_title_temp: JSON.stringify(res[0].data.custom_css_section_title),
+                    custom_css_university_company_temp: JSON.stringify(res[0].data.custom_css_university_company),
+                    custom_css_course_position_temp: JSON.stringify(res[0].data.custom_css_course_position),
+                    custom_css_date_temp: JSON.stringify(res[0].data.custom_css_date),
+                    custom_css_description_temp: JSON.stringify(res[0].data.custom_css_description),
+
                     cv_history: res[0].data.cv_history
                 })
             }
@@ -178,9 +240,47 @@ class App extends Component {
 
         html2pdf(cv, { filename })
 
-        const { user_info_name, user_info_email, user_info_address, user_info_phone_number, user_info_education, user_info_experience, db, public_hex, cv_history } = this.state
+        const { 
+            user_info_name, 
+            user_info_email, 
+            user_info_address, 
+            user_info_phone_number, 
+            user_info_education, 
+            user_info_experience, 
+
+            custom_css_name,
+            custom_css_user_info,
+            custom_css_section_title,
+            
+            custom_css_university_company,
+            custom_css_course_position,
+            custom_css_date,
+            custom_css_description,
+            
+            db, 
+            public_hex, 
+            cv_history 
+        } = this.state
         
-        const data = { user_info_name, user_info_email, user_info_address, user_info_phone_number, user_info_education, user_info_experience, cv_history }
+        const data = { 
+            user_info_name, 
+            user_info_email, 
+            user_info_address, 
+            user_info_phone_number, 
+            user_info_education, 
+            user_info_experience, 
+
+            custom_css_name,
+            custom_css_user_info,
+            custom_css_section_title,
+            
+            custom_css_university_company,
+            custom_css_course_position,
+            custom_css_date,
+            custom_css_description,
+            
+            cv_history 
+        }
         console.log('ALL USER_INFO: ', data)
         await db.put({ _id: public_hex, data })
     }
@@ -219,15 +319,22 @@ class App extends Component {
         this.setState({ [key]: e.target.value })
     }
 
-    applyCSSChanges = () => {
+    applyCSSChanges = async () => {
         for (const field of CUSTOM_CSS_FIELDS) {
             try {
                 const new_css = JSON.parse(this.state[`${field}_temp`])
                 console.log(`new_css for ${field}`, new_css, typeof new_css)
                 this.setState({ [field]: new_css })
             } catch (err) {
-                console.log('err: ', err)
-                console.log('errored on field: ', field)
+                console.log('initial erros: ', this.state.errors)
+                let errors = this.state.errors.slice()
+                let error_field = field.slice(11, field.length)
+                error_field = error_field.replace(/_/g, '/')
+                console.log('error_field: ', error_field)
+                errors.push(error_field)
+                errors = [...new Set(errors)]
+                console.log('errors: ', errors)
+                await this.setState({ errors })
             }
         }
     }
@@ -239,9 +346,7 @@ class App extends Component {
             <MDBContainer>
                 <br/>
                 <br/>
-                <h2 className="text-center">Decentralized CVs</h2>
-                <br />
-                <br />
+                <h2 className="h2 mb-4 text-center">Decentralized CVs</h2>
                 <MDBRow>
                     <MDBCol>
                         <p>Please save your <strong>hex code</strong> to access your information:</p>
@@ -289,13 +394,9 @@ class App extends Component {
                                         onChange={this.handleOnChange}
                                         value={this.state.user_info_email ? this.state.user_info_email : ''}
                                     />
-                                </MDBCol>
-                            </MDBRow>
-                            <MDBRow>
-                                <MDBCol>
                                     <MDBInput
                                         label="Address"
-                                        icon="envelope"
+                                        icon="home"
                                         group
                                         type="text"
                                         validate
@@ -307,7 +408,7 @@ class App extends Component {
                                     />
                                     <MDBInput
                                         label="Phone Number"
-                                        icon="envelope"
+                                        icon="phone"
                                         group
                                         type="text"
                                         validate
@@ -370,7 +471,6 @@ class App extends Component {
                         <MDBCol>
                             <MDBRow>
                                 <MDBCol><h1 class="h4 mb-4">Custom CSS</h1></MDBCol>
-                                <MDBCol><MDBBtn className="float-right" color="blue" onClick={this.applyCSSChanges}>Apply Changes</MDBBtn></MDBCol>
                             </MDBRow>
                             <MDBInput
                                 type="textarea"
@@ -396,27 +496,65 @@ class App extends Component {
                                 value={this.state.custom_css_section_title_temp}
                                 onChange={this.handleCustomCSSChange}
                             />
+                            <MDBInput
+                                type="textarea"
+                                rows="2"
+                                label="University and Company Line"
+                                id='custom_css_university_company'
+                                value={this.state.custom_css_university_company_temp}
+                                onChange={this.handleCustomCSSChange}
+                            />
+                            <MDBInput
+                                type="textarea"
+                                rows="2"
+                                label="Program / Course and Position Line"
+                                id='custom_css_course_position'
+                                value={this.state.custom_css_course_position_temp}
+                                onChange={this.handleCustomCSSChange}
+                            />
+                            <MDBInput
+                                type="textarea"
+                                rows="2"
+                                label="Duration Line"
+                                id='custom_css_date'
+                                value={this.state.custom_css_date_temp}
+                                onChange={this.handleCustomCSSChange}
+                            />
+                            <MDBInput
+                                type="textarea"
+                                rows="2"
+                                label="Description"
+                                id='custom_css_description'
+                                value={this.state.custom_css_description_temp}
+                                onChange={this.handleCustomCSSChange}
+                            />
+                            { this.state.errors.length > 0 ? 
+                                <p className="float-left" id='fields-error-message'>You have errors in the following fields: {this.state.errors.join(', ')}</p> 
+                                : 
+                                '' 
+                            }
+                            <MDBBtn className="float-right" color="blue" onClick={this.applyCSSChanges}>Apply Changes</MDBBtn>
                         </MDBCol>
                         :
                         <div></div>
                     }
                     <MDBCol>
-                        <h1><strong>PDF Preview</strong></h1>
+                        <h1 class="h4 mb-4">PDF Preview</h1>
                         <div id='cv-preview'>
                             <MDBContainer>
                                 <MDBCard>
                                     <MDBCardBody>
-                                        <p id='name' style={this.state.custom_css_name}>{this.state.user_info_name}</p>
-                                        <div id='user-info' style={this.state.custom_css_user_info}>
+                                        <p style={this.state.custom_css_name}>{this.state.user_info_name}</p>
+                                        <div style={this.state.custom_css_user_info}>
                                             <p>{this.state.user_info_address} {this.state.user_info_email} {this.state.user_info_phone_number} </p>
                                         </div>
-                                        <p id='section-title' style={this.state.custom_css_section_title}>Education</p>
+                                        <p style={this.state.custom_css_section_title}>Education</p>
                                         {this.state.user_info_education.map((e) => {
                                             return (
                                                 <div id='education-container'>
-                                                    <p id='education-school-name'>{e.school}</p>
-                                                    <p id='education-degree-course'>{e.degree} - {e.course}</p>
-                                                    <p id='education-dates'>{e.education_start_date} - {e.education_end_date}</p>
+                                                    <p id='education-school-name' style={this.state.custom_css_university_company}>{e.school}</p>
+                                                    <p id='education-degree-course' style={this.state.custom_css_course_position}>{e.degree} - {e.course}</p>
+                                                    <p id='education-dates' style={this.state.custom_css_date}>{e.education_start_date} - {e.education_end_date}</p>
                                                     <br />
                                                 </div>
                                             )
@@ -425,10 +563,10 @@ class App extends Component {
                                         {this.state.user_info_experience.map((e) => {
                                             return (
                                                 <div id='experience-container'>
-                                                    <p id='experience-company'>{e.company}</p>
-                                                    <p id='experience-position'>{e.position}</p>
-                                                    <p id='experience-dates'>{e.experience_start_date} - {e.experience_end_date}</p>
-                                                    <p id='experience-description'>{e.job_description}</p>
+                                                    <p id='experience-company' style={this.state.custom_css_university_company}>{e.company}</p>
+                                                    <p id='experience-position' style={this.state.custom_css_course_position}>{e.position}</p>
+                                                    <p id='experience-dates' style={this.state.custom_css_date}>{e.experience_start_date} - {e.experience_end_date}</p>
+                                                    <p id='experience-description' style={this.state.custom_css_description}>{e.job_description}</p>
                                                     <br />
                                                 </div>
                                             )
