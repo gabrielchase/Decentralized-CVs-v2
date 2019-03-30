@@ -13,7 +13,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css'
 import 'bootstrap-css-only/css/bootstrap.min.css'
 import 'mdbreact/dist/css/mdb.css'
 
-
+const CUSTOM_CSS_FIELDS = ['custom_css_name', 'custom_css_user_info', 'custom_css_section_title']
 
 
 class App extends Component {
@@ -32,7 +32,32 @@ class App extends Component {
         education_modal: false,
         experience_modal: false,
         cv_history: [],
-        custom_css: ''
+        custom_css: '',
+        mode: 'user-info',
+        custom_css_name: {
+            color: 'red',
+            fontSize: '50px'
+        },
+        custom_css_user_info: {
+            color: 'blue',
+            fontSize: '25px'
+        },
+        custom_css_section_title: {
+            color: 'green',
+            fontSize: '25px'
+        },
+        custom_css_name_temp: JSON.stringify({
+            color: 'red',
+            fontSize: '50px'
+        }),
+        custom_css_user_info_temp: JSON.stringify({
+            color: 'blue',
+            fontSize: '25px'
+        }),
+        custom_css_section_title_temp: JSON.stringify({
+            color: 'green',
+            fontSize: '25px'
+        }),
     }
 
     // constructor(props) {
@@ -76,6 +101,8 @@ class App extends Component {
                 await this.setState({ 
                     user_info_name: res[0].data.user_info_name,
                     user_info_email: res[0].data.user_info_email,
+                    user_info_address: res[0].data.user_info_address,
+                    user_info_phone_number: res[0].data.user_info_phone_number,
                     user_info_education: res[0].data.user_info_education,
                     user_info_experience: res[0].data.user_info_experience,
                     cv_history: res[0].data.cv_history
@@ -151,9 +178,9 @@ class App extends Component {
 
         html2pdf(cv, { filename })
 
-        const { user_info_name, user_info_email, user_info_education, user_info_experience, db, public_hex, cv_history } = this.state
+        const { user_info_name, user_info_email, user_info_address, user_info_phone_number, user_info_education, user_info_experience, db, public_hex, cv_history } = this.state
         
-        const data = { user_info_name, user_info_email, user_info_education, user_info_experience, cv_history }
+        const data = { user_info_name, user_info_email, user_info_address, user_info_phone_number, user_info_education, user_info_experience, cv_history }
         console.log('ALL USER_INFO: ', data)
         await db.put({ _id: public_hex, data })
     }
@@ -184,289 +211,364 @@ class App extends Component {
     }
 
     handleCustomCSSChange = (e) => {
-        e.preventDefault()
-        this.setState({ custom_css: e.target.value })
+        console.log('value: ', e.target.value)
+        // console.log('asdf: ', JSON.parse(e.target.value), typeof JSON.parse(e.target.value))
+        // const new_css = Object.assign({}, JSON.parse(e.target.value))
+        let key = `${e.target.id}_temp`
+
+        this.setState({ [key]: e.target.value })
+    }
+
+    applyCSSChanges = () => {
+        for (const field of CUSTOM_CSS_FIELDS) {
+            try {
+                const new_css = JSON.parse(this.state[`${field}_temp`])
+                console.log(`new_css for ${field}`, new_css, typeof new_css)
+                this.setState({ [field]: new_css })
+            } catch (err) {
+                console.log('err: ', err)
+                console.log('errored on field: ', field)
+            }
+        }
     }
     
     render() {
         const { public_hex } = this.state
 
-        // if (this.state.user_info_name) {
         return (
-          <MDBContainer>
-            <br/>
-            <h2>Decentralized CVs</h2>
-            <MDBRow>
-                <MDBCol>
-                    <p>Please save your hex code to access your information</p>
-                    <p>Your public hex code: </p>
-                    <MDBInput value={public_hex} onChange={this.onHexcodeChange}/>
-                </MDBCol>
-            </MDBRow>
-            
-            <MDBRow>
-                <MDBCol>
-                    <MDBBtn className="float-right" color="green" onClick={this.handleUploadCVToIPFS}>Save Changes</MDBBtn>
-                </MDBCol>
-            </MDBRow>
-            
-            <MDBRow>
-                <MDBCol>
-                    <MDBInput
-                        label="Your name"
-                        icon="user"
-                        group
-                        type="text"
-                        validate
-                        error="wrong"
-                        success="right"
-                        id='user_info_name'
-                        onChange={this.handleOnChange}
-                        value={this.state.user_info_name ? this.state.user_info_name : ''}
-                    />
-                </MDBCol>
-                <MDBCol>
-                    <MDBInput
-                        label="Your email"
-                        icon="envelope"
-                        group
-                        type="email"
-                        validate
-                        error="wrong"
-                        success="right"
-                        id='user_info_email'
-                        onChange={this.handleOnChange}
-                        value={this.state.user_info_email ? this.state.user_info_email : ''}
-                    />
-                </MDBCol>
-            </MDBRow>
-            <MDBRow>
-                <MDBCol>
-                    <MDBRow>
-                        <MDBCol><h1 class="h4 mb-4">Education</h1></MDBCol>
-                        <MDBCol><MDBBtn color="primary" size="sm" onClick={() => this.setState({ education_modal: !this.state.education_modal })}>+</MDBBtn></MDBCol>
-                    </MDBRow>
-                    
-                    {this.state.user_info_education.map((e) => {
-                        return (
-                            <MDBCard className="w-75 mb-4">
-                                <MDBCardBody>
-                                    <MDBCardTitle>{e.school}<MDBBtn className="float-right" color="danger" size="sm" onClick={() => this.deleteEducation(e._id)}>x</MDBBtn></MDBCardTitle>
-                                    <MDBCardText>
-                                        {e.degree} - {e.course}
-                                        <br/>
-                                        {e.education_start_date} - {e.education_end_date}
-                                    </MDBCardText>
-                                </MDBCardBody>
-                            </MDBCard>
-                        )
-                    })}
-                    <br/>
-                    <MDBRow>
-                        <MDBCol><h1 class="h4 mb-4">Experience</h1></MDBCol>
-                        <MDBCol><MDBBtn color="primary" size="sm" onClick={() => this.setState({ experience_modal: !this.state.experience_modal })}>+</MDBBtn></MDBCol>
-                    </MDBRow>
-                    {this.state.user_info_experience.map((e) => {
-                        return (
-                            <MDBCard className="w-75 mb-4">
-                                <MDBCardBody>
-                                    <MDBCardTitle>{e.company}<MDBBtn className="float-right" color="danger" size="sm" onClick={() => this.deleteExperience(e._id)}>x</MDBBtn></MDBCardTitle>
-                                    <MDBCardText>
-                                        {e.position}
-                                        <br/>
-                                        {e.experience_start_date} - {e.experience_end_date}
-                                        <br/>
-                                        {e.job_description}
-                                    </MDBCardText>
-                                </MDBCardBody>
-                            </MDBCard>
-                        )
-                    })}
-                    <MDBRow>
-                        <MDBCol>
-                        
-                                    <div className="form-group">
-                                        <h1 class="h4 mb-4">Custom CSS</h1>
-                                        <textarea
-                                            className="form-control"
-                                            id="exampleFormControlTextarea1"
-                                            rows="5"
-                                            onChange={this.handleCustomCSSChange}
-                                        />
-                                    </div>
-                        </MDBCol>
-                    </MDBRow>
-                </MDBCol>
+            <MDBContainer>
+                <br/>
+                <br/>
+                <h2 className="text-center">Decentralized CVs</h2>
+                <br />
+                <br />
+                <MDBRow>
+                    <MDBCol>
+                        <p>Please save your <strong>hex code</strong> to access your information:</p>
+                        <MDBInput value={public_hex} onChange={this.onHexcodeChange}/>
+                    </MDBCol>
+                </MDBRow>
                 
+                <MDBRow>
+                    <MDBCol>
+                        <MDBBtn className="float-left" color="blue" onClick={() => this.setState({ mode: 'user-info'}) }>User Info</MDBBtn>
+                        <MDBBtn className="float-left" color="blue" onClick={() => this.setState({ mode: 'custom-css'}) }>Custom CSS</MDBBtn>
+                    </MDBCol>
+                    <MDBCol>
+                        <MDBBtn className="float-right" color="green" onClick={this.handleUploadCVToIPFS}>Save Changes</MDBBtn>
+                    </MDBCol>
+                </MDBRow>
                 <br />
                 <br />
-                <MDBCol>
-                    <h1><strong>PDF Preview</strong></h1>
-                    <div id='cv-preview'>
-                        <MDBContainer>
-                            <MDBCard>
-                                <MDBCardBody>
-                                    <h1>{this.state.user_info_name}</h1>
-                                    <h1>{this.state.user_info_email}</h1>
-                                    <h1>Education</h1>
-                                    {this.state.user_info_education.map((e) => {
-                                        return (
-                                            <div>
-                                                <p>{e.school}</p>
-                                                <p>{e.degree} - {e.course}</p>
-                                                <p>{e.education_start_date} - {e.education_end_date}</p>
-                                                <br />
-                                            </div>
-                                        )
-                                    })}
-                                    <h1>Experience</h1>
-                                    {this.state.user_info_experience.map((e) => {
-                                        return (
-                                            <div>
-                                                <p>{e.company}</p>
-                                                <p>{e.position}</p>
-                                                <p>{e.experience_start_date} - {e.experience_end_date}</p>
-                                                <p>{e.job_description}</p>
-                                                <br />
-                                            </div>
-                                        )
-                                    })}
-                                </MDBCardBody>
-                            </MDBCard>
-                        </MDBContainer>
-                    </div>
-                    <br/><br/>
-                </MDBCol>
-            </MDBRow>
+                <MDBRow>
+                    {this.state.mode === 'user-info' ?
+                        <MDBCol>
+                            <MDBRow>
+                                <MDBCol>
+                                    <MDBInput
+                                        label="Name"
+                                        icon="user"
+                                        group
+                                        type="text"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='user_info_name'
+                                        onChange={this.handleOnChange}
+                                        value={this.state.user_info_name ? this.state.user_info_name : ''}
+                                    />
+                                    <MDBInput
+                                        label="Email"
+                                        icon="envelope"
+                                        group
+                                        type="email"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='user_info_email'
+                                        onChange={this.handleOnChange}
+                                        value={this.state.user_info_email ? this.state.user_info_email : ''}
+                                    />
+                                </MDBCol>
+                            </MDBRow>
+                            <MDBRow>
+                                <MDBCol>
+                                    <MDBInput
+                                        label="Address"
+                                        icon="envelope"
+                                        group
+                                        type="text"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='user_info_address'
+                                        onChange={this.handleOnChange}
+                                        value={this.state.user_info_address}
+                                    />
+                                    <MDBInput
+                                        label="Phone Number"
+                                        icon="envelope"
+                                        group
+                                        type="text"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='user_info_phone_number'
+                                        onChange={this.handleOnChange}
+                                        value={this.state.user_info_phone_number}
+                                    />
+                                </MDBCol>
+                            </MDBRow>
+                            <MDBRow>
+                                <MDBCol><h1 class="h4 mb-4">Education</h1></MDBCol>
+                                <MDBCol><MDBBtn color="primary" size="sm" onClick={() => this.setState({ education_modal: !this.state.education_modal })}>+</MDBBtn></MDBCol>
+                            </MDBRow>
+                            <div>
+                                {this.state.user_info_education.map((e) => {
+                                    return (
+                                        <MDBCard className="w-75 mb-4">
+                                            <MDBCardBody>
+                                                <MDBCardTitle>{e.school}<MDBBtn className="float-right" color="danger" size="sm" onClick={() => this.deleteEducation(e._id)}>x</MDBBtn></MDBCardTitle>
+                                                <MDBCardText>
+                                                    {e.degree} - {e.course}
+                                                    <br/>
+                                                    {e.education_start_date} - {e.education_end_date}
+                                                </MDBCardText>
+                                            </MDBCardBody>
+                                        </MDBCard>
+                                    )
+                                })}
+                            </div>
+                            <br/>
+                            <MDBRow>
+                                <MDBCol><h1 class="h4 mb-4">Experience</h1></MDBCol>
+                                <MDBCol><MDBBtn color="primary" size="sm" onClick={() => this.setState({ experience_modal: !this.state.experience_modal })}>+</MDBBtn></MDBCol>
+                            </MDBRow>
+                            <div>
+                                {this.state.user_info_experience.map((e) => {
+                                    return (
+                                        <MDBCard className="w-75 mb-4">
+                                            <MDBCardBody>
+                                                <MDBCardTitle>{e.company}<MDBBtn className="float-right" color="danger" size="sm" onClick={() => this.deleteExperience(e._id)}>x</MDBBtn></MDBCardTitle>
+                                                <MDBCardText>
+                                                    {e.position}
+                                                    <br/>
+                                                    {e.experience_start_date} - {e.experience_end_date}
+                                                    <br/>
+                                                    {e.job_description}
+                                                </MDBCardText>
+                                            </MDBCardBody>
+                                        </MDBCard>
+                                    )
+                                })}
+                            </div>
+                        </MDBCol>
+                        :
+                        <div></div>
+                    }
+                    {this.state.mode === 'custom-css' ?
+                        <MDBCol>
+                            <MDBRow>
+                                <MDBCol><h1 class="h4 mb-4">Custom CSS</h1></MDBCol>
+                                <MDBCol><MDBBtn className="float-right" color="blue" onClick={this.applyCSSChanges}>Apply Changes</MDBBtn></MDBCol>
+                            </MDBRow>
+                            <MDBInput
+                                type="textarea"
+                                rows="2"
+                                label="Name"
+                                id='custom_css_name'
+                                value={this.state.custom_css_name_temp}
+                                onChange={this.handleCustomCSSChange}
+                            />
+                            <MDBInput
+                                type="textarea"
+                                rows="2"
+                                label="User Info"
+                                id='custom_css_user_info'
+                                value={this.state.custom_css_user_info_temp}
+                                onChange={this.handleCustomCSSChange}
+                            />
+                            <MDBInput
+                                type="textarea"
+                                rows="2"
+                                label="Section Titles"
+                                id='custom_css_section_title'
+                                value={this.state.custom_css_section_title_temp}
+                                onChange={this.handleCustomCSSChange}
+                            />
+                        </MDBCol>
+                        :
+                        <div></div>
+                    }
+                    <MDBCol>
+                        <h1><strong>PDF Preview</strong></h1>
+                        <div id='cv-preview'>
+                            <MDBContainer>
+                                <MDBCard>
+                                    <MDBCardBody>
+                                        <p id='name' style={this.state.custom_css_name}>{this.state.user_info_name}</p>
+                                        <div id='user-info' style={this.state.custom_css_user_info}>
+                                            <p>{this.state.user_info_address} {this.state.user_info_email} {this.state.user_info_phone_number} </p>
+                                        </div>
+                                        <p id='section-title' style={this.state.custom_css_section_title}>Education</p>
+                                        {this.state.user_info_education.map((e) => {
+                                            return (
+                                                <div id='education-container'>
+                                                    <p id='education-school-name'>{e.school}</p>
+                                                    <p id='education-degree-course'>{e.degree} - {e.course}</p>
+                                                    <p id='education-dates'>{e.education_start_date} - {e.education_end_date}</p>
+                                                    <br />
+                                                </div>
+                                            )
+                                        })}
+                                        <p id='section-title' style={this.state.custom_css_section_title}>Experience</p>
+                                        {this.state.user_info_experience.map((e) => {
+                                            return (
+                                                <div id='experience-container'>
+                                                    <p id='experience-company'>{e.company}</p>
+                                                    <p id='experience-position'>{e.position}</p>
+                                                    <p id='experience-dates'>{e.experience_start_date} - {e.experience_end_date}</p>
+                                                    <p id='experience-description'>{e.job_description}</p>
+                                                    <br />
+                                                </div>
+                                            )
+                                        })}
+                                    </MDBCardBody>
+                                </MDBCard>
+                            </MDBContainer>
+                        </div>
+                        <br/><br/>
+                    </MDBCol>
+                </MDBRow>
 
-            <MDBModal isOpen={this.state.education_modal} toggle={() => this.setState({ education_modal: !this.state.education_modal })} centered>
-                <MDBModalHeader toggle={() => this.setState({ education_modal: !this.state.education_modal })}>Add Education</MDBModalHeader>
-                <MDBModalBody>
-                    <MDBContainer>
-                        <form>
-                            <div className="grey-text">
-                                <MDBInput
-                                    label="School"
-                                    group
-                                    type="text"
-                                    validate
-                                    error="wrong"
-                                    success="right"
-                                    id='school'
-                                    onChange={this.handleOnChange}
-                                />
-                                <MDBInput
-                                    label="Degree"
-                                    group
-                                    type="text"
-                                    validate
-                                    error="wrong"
-                                    success="right"
-                                    id='degree'
-                                    onChange={this.handleOnChange}
-                                />
-                                <MDBInput
-                                    label="Course"
-                                    group
-                                    type="text"
-                                    validate
-                                    error="wrong"
-                                    success="right"
-                                    id='course'
-                                    onChange={this.handleOnChange}
-                                />
-                                <MDBInput
-                                    label="Start Year-Month"
-                                    group
-                                    type="text"
-                                    validate
-                                    error="wrong"
-                                    success="right"
-                                    id='education_start_date'
-                                    onChange={this.handleOnChange}
-                                />
-                                <MDBInput
-                                    label="Graduation Year-Month"
-                                    group
-                                    type="text"
-                                    validate
-                                    error="wrong"
-                                    success="right"
-                                    id='education_end_date'
-                                    onChange={this.handleOnChange}
-                                />
-                            </div>
-                        </form>
-                    </MDBContainer>
-                </MDBModalBody>
-                <MDBModalFooter>
-                    <MDBBtn color="secondary" onClick={() => this.setState({ education_modal: !this.state.education_modal })}>Close</MDBBtn>
-                    <MDBBtn color="primary" onClick={this.handleAddEducation}>Add</MDBBtn>
-                </MDBModalFooter>
-            </MDBModal>
-            <MDBModal isOpen={this.state.experience_modal} toggle={() => this.setState({ experience_modal: !this.state.experience_modal })} centered>
-                <MDBModalHeader toggle={() => this.setState({ experience_modal: !this.state.experience_modal })}>Add Experience</MDBModalHeader>
-                <MDBModalBody>
-                    <MDBContainer>
-                        <form>
-                            <div className="grey-text">
-                                <MDBInput
-                                    label="Company"
-                                    group
-                                    type="text"
-                                    validate
-                                    error="wrong"
-                                    success="right"
-                                    id='company'
-                                    onChange={this.handleOnChange}
-                                />
-                                <MDBInput
-                                    label="Position"
-                                    group
-                                    type="email"
-                                    validate
-                                    error="wrong"
-                                    success="right"
-                                    id='position'
-                                    onChange={this.handleOnChange}
-                                />
-                                <MDBInput
-                                    label="Start Month and Year"
-                                    group
-                                    type="text"
-                                    validate
-                                    error="wrong"
-                                    success="right"
-                                    id='experience_start_date'
-                                    onChange={this.handleOnChange}
-                                />
-                                <MDBInput
-                                    label="End Month and Year"
-                                    group
-                                    type="text"
-                                    validate
-                                    error="wrong"
-                                    success="right"
-                                    id='experience_end_date'
-                                    onChange={this.handleOnChange}
-                                />
-                                <MDBInput
-                                    type="textarea"
-                                    rows="3"
-                                    label="Job Description"
-                                    id='job_description'
-                                    onChange={this.handleOnChange}
-                                />
-                            </div>
-                        </form>
-                    </MDBContainer>
-                </MDBModalBody>
-                <MDBModalFooter>
-                    <MDBBtn color="secondary" onClick={() => this.setState({ experience_modal: !this.state.experience_modal })}>Close</MDBBtn>
-                    <MDBBtn color="primary" onClick={this.handleAddExperience}>Add</MDBBtn>
-                </MDBModalFooter>
-            </MDBModal>
-          </MDBContainer>
+                <MDBModal isOpen={this.state.education_modal} toggle={() => this.setState({ education_modal: !this.state.education_modal })} centered>
+                    <MDBModalHeader toggle={() => this.setState({ education_modal: !this.state.education_modal })}>Add Education</MDBModalHeader>
+                    <MDBModalBody>
+                        <MDBContainer>
+                            <form>
+                                <div className="grey-text">
+                                    <MDBInput
+                                        label="School"
+                                        group
+                                        type="text"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='school'
+                                        onChange={this.handleOnChange}
+                                    />
+                                    <MDBInput
+                                        label="Degree"
+                                        group
+                                        type="text"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='degree'
+                                        onChange={this.handleOnChange}
+                                    />
+                                    <MDBInput
+                                        label="Course"
+                                        group
+                                        type="text"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='course'
+                                        onChange={this.handleOnChange}
+                                    />
+                                    <MDBInput
+                                        label="Start Year-Month"
+                                        group
+                                        type="text"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='education_start_date'
+                                        onChange={this.handleOnChange}
+                                    />
+                                    <MDBInput
+                                        label="Graduation Year-Month"
+                                        group
+                                        type="text"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='education_end_date'
+                                        onChange={this.handleOnChange}
+                                    />
+                                </div>
+                            </form>
+                        </MDBContainer>
+                    </MDBModalBody>
+                    <MDBModalFooter>
+                        <MDBBtn color="secondary" onClick={() => this.setState({ education_modal: !this.state.education_modal })}>Close</MDBBtn>
+                        <MDBBtn color="primary" onClick={this.handleAddEducation}>Add</MDBBtn>
+                    </MDBModalFooter>
+                </MDBModal>
+                <MDBModal isOpen={this.state.experience_modal} toggle={() => this.setState({ experience_modal: !this.state.experience_modal })} centered>
+                    <MDBModalHeader toggle={() => this.setState({ experience_modal: !this.state.experience_modal })}>Add Experience</MDBModalHeader>
+                    <MDBModalBody>
+                        <MDBContainer>
+                            <form>
+                                <div className="grey-text">
+                                    <MDBInput
+                                        label="Company"
+                                        group
+                                        type="text"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='company'
+                                        onChange={this.handleOnChange}
+                                    />
+                                    <MDBInput
+                                        label="Position"
+                                        group
+                                        type="email"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='position'
+                                        onChange={this.handleOnChange}
+                                    />
+                                    <MDBInput
+                                        label="Start Month and Year"
+                                        group
+                                        type="text"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='experience_start_date'
+                                        onChange={this.handleOnChange}
+                                    />
+                                    <MDBInput
+                                        label="End Month and Year"
+                                        group
+                                        type="text"
+                                        validate
+                                        error="wrong"
+                                        success="right"
+                                        id='experience_end_date'
+                                        onChange={this.handleOnChange}
+                                    />
+                                    <MDBInput
+                                        type="textarea"
+                                        rows="3"
+                                        label="Job Description"
+                                        id='job_description'
+                                        onChange={this.handleOnChange}
+                                    />
+                                </div>
+                            </form>
+                        </MDBContainer>
+                    </MDBModalBody>
+                    <MDBModalFooter>
+                        <MDBBtn color="secondary" onClick={() => this.setState({ experience_modal: !this.state.experience_modal })}>Close</MDBBtn>
+                        <MDBBtn color="primary" onClick={this.handleAddExperience}>Add</MDBBtn>
+                    </MDBModalFooter>
+                </MDBModal>
+            </MDBContainer>
         )
     }
 }
