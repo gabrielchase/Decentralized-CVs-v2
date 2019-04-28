@@ -1,17 +1,19 @@
 import React, { Component } from'react'
-import OrbitDB from 'orbit-db'
 import { 
     MDBContainer, MDBRow, MDBCol, MDBBtn,
     MDBModal, MDBModalHeader, MDBModalBody, MDBModalFooter,
     MDBInput,
     MDBCard, MDBCardBody, MDBCardTitle, MDBCardText
 } from 'mdbreact'
+
 import html2pdf from 'html2pdf.js'
-import ipfs from './ipfs'
 
 import '@fortawesome/fontawesome-free/css/all.min.css'
 import 'bootstrap-css-only/css/bootstrap.min.css'
 import 'mdbreact/dist/css/mdb.css'
+
+const IPFSClient = require('ipfs-http-client')
+let ipfs = IPFSClient('localhost', '5002')
 
 const CUSTOM_CSS_FIELDS = [
     'custom_css_name', 
@@ -26,9 +28,6 @@ const CUSTOM_CSS_FIELDS = [
 
 class App extends Component {
     state = {
-        orbitdb: null,
-        db: null, 
-        public_hex: null,
         education: '',
         user_info_name: '',
         user_info_address: '',
@@ -43,141 +42,118 @@ class App extends Component {
         custom_css: '',
         mode: 'user-info',
 
-        custom_css_name: {
-            color: 'black',
-            fontSize: '18px'
-        },
-        custom_css_user_info: {
-            color: 'black',
-            fontSize: '18px'
-        },
-        custom_css_section_title: {
-            color: 'black',
-            fontSize: '18px'
-        },
-        custom_css_university_company: {
-            color: 'black',
-            fontSize: '18px'
-        },
-        custom_css_course_position: {
-            color: 'black',
-            fontSize: '18px'
-        },
-        custom_css_date: {
-            color: 'black',
-            fontSize: '18px'
-        },
-        custom_css_description: {
-            color: 'black',
-            fontSize: '18px'
-        },
+        custom_css_name: {},
+        custom_css_user_info: {},
+        custom_css_section_title: {},
+        custom_css_university_company: {},
+        custom_css_course_position: {},
+        custom_css_date: {},
+        custom_css_description: {},
 
-        custom_css_name_temp: JSON.stringify({
-            color: 'black',
-            fontSize: '18px'
-        }),
-        custom_css_user_info_temp: JSON.stringify({
-            color: 'black',
-            fontSize: '18px'
-        }),
-        custom_css_section_title_temp: JSON.stringify({
-            color: 'black',
-            fontSize: '18px'
-        }),
-        custom_css_university_company_temp: JSON.stringify({
-            color: 'black',
-            fontSize: '18px'
-        }),
-        custom_css_course_position_temp: JSON.stringify({
-            color: 'black',
-            fontSize: '18px'
-        }),
-        custom_css_date_temp: JSON.stringify({
-            color: 'black',
-            fontSize: '18px'
-        }),
-        custom_css_description_temp: JSON.stringify({
-            color: 'black',
-            fontSize: '18px'
-        }),
-
+        custom_css_name_temp: JSON.stringify({}),
+        custom_css_user_info_temp: JSON.stringify({}),
+        custom_css_section_title_temp: JSON.stringify({}),
+        custom_css_university_company_temp: JSON.stringify({}),
+        custom_css_course_position_temp: JSON.stringify({}),
+        custom_css_date_temp: JSON.stringify({}),
+        custom_css_description_temp: JSON.stringify({}),
 
         errors: []
     }
 
-    // constructor(props) {
-    async componentWillMount() {
-        // super(props)
-        console.log('hi')
-    
-        // ipfs.on('ready', async () => {
+    componentWillMount = async () => {
         console.log('ipfs ready: ', ipfs)
-
-        //Create OrbitDB instance
-        const orbitdb = new OrbitDB(ipfs)
-        console.log('orbitdb ready')
-
-        const public_hex = orbitdb.key.getPublic('hex')
-        console.log('public_hex: ', public_hex)
-        const access = {
-            // Give write access to ourselves
-            write: [public_hex],
-        }
-    
-        const db = await orbitdb.docstore('decentralized-cvs', access)
-        await db.load()
-        console.log('db address', db.address.toString())
+        const { id } = await ipfs.id()
+        console.log('id: ', id)
+        const user = await this.getProfileJSON(id)
+        await this.setUserState(user)
         
-        //store ipfs and orbitdb in state
-        this.setState({
-            orbitdb,
-            db,
-            public_hex
+        await this.setState({
+            ipfs, 
+            id,
+            user
         })
-        await this.getUser(public_hex)
+        
+        console.log('mounted state: ', this.state)
     }
 
-    getUser = async (public_hex) => {
-        const res = await this.state.db.get(public_hex)
-        console.log('getting user with public_hex: ', public_hex)
-        console.log(res)
+    getProfileJSON = async (id) => {
         try {
-            if (res[0]._id) {
-                await this.setState({ 
-                    user_info_name: res[0].data.user_info_name,
-                    user_info_email: res[0].data.user_info_email,
-                    user_info_address: res[0].data.user_info_address,
-                    user_info_phone_number: res[0].data.user_info_phone_number,
-                    user_info_education: res[0].data.user_info_education,
-                    user_info_experience: res[0].data.user_info_experience,
-
-                    custom_css_name: res[0].data.custom_css_name,
-                    custom_css_user_info: res[0].data.custom_css_user_info,
-                    custom_css_section_title: res[0].data.custom_css_section_title,
-                    custom_css_university_company: res[0].data.custom_css_university_company,
-                    custom_css_course_position: res[0].data.custom_css_course_position,
-                    custom_css_date: res[0].data.custom_css_date,
-                    custom_css_description: res[0].data.custom_css_description,
-
-                    custom_css_name_temp: JSON.stringify(res[0].data.custom_css_name),
-                    custom_css_user_info_temp: JSON.stringify(res[0].data.custom_css_user_info),
-                    custom_css_section_title_temp: JSON.stringify(res[0].data.custom_css_section_title),
-                    custom_css_university_company_temp: JSON.stringify(res[0].data.custom_css_university_company),
-                    custom_css_course_position_temp: JSON.stringify(res[0].data.custom_css_course_position),
-                    custom_css_date_temp: JSON.stringify(res[0].data.custom_css_date),
-                    custom_css_description_temp: JSON.stringify(res[0].data.custom_css_description),
-
-                    cv_history: res[0].data.cv_history
-                })
-            }
+            const name = await ipfs.name.resolve(`/ipns/${id}`)
+            console.log('name: ', name)
+            const files = await ipfs.get(`${name}/json`)
+            const user_metadata = String.fromCharCode.apply(null, files[0].content)
+            return JSON.parse(user_metadata)
         } catch (err) {
             console.log('err: ', err)
+            return false
         }
     }
 
-    handleOnChange = (e) => {
-        e.preventDefault()
+    setUserState = async (user) => {
+        await this.setState({ 
+            user_info_name: user.user_info_name,
+            user_info_email: user.user_info_email,
+            user_info_address: user.user_info_address,
+            user_info_phone_number: user.user_info_phone_number,
+            user_info_education: user.user_info_education,
+            user_info_experience: user.user_info_experience,
 
+            custom_css_name: user.custom_css_name,
+            custom_css_user_info: user.custom_css_user_info,
+            custom_css_section_title: user.custom_css_section_title,
+            custom_css_university_company: user.custom_css_university_company,
+            custom_css_course_position: user.custom_css_course_position,
+            custom_css_date: user.custom_css_date,
+            custom_css_description: user.custom_css_description,
+
+            custom_css_name_temp: JSON.stringify(user.custom_css_name),
+            custom_css_user_info_temp: JSON.stringify(user.custom_css_user_info),
+            custom_css_section_title_temp: JSON.stringify(user.custom_css_section_title),
+            custom_css_university_company_temp: JSON.stringify(user.custom_css_university_company),
+            custom_css_course_position_temp: JSON.stringify(user.custom_css_course_position),
+            custom_css_date_temp: JSON.stringify(user.custom_css_date),
+            custom_css_description_temp: JSON.stringify(user.custom_css_description),
+        })
+    }
+        // console.log('getting user with public_hex: ', public_hex)
+        // console.log('res: ', res)
+        // try {
+        //     if (res[0]._id) {
+        //         
+        //     }
+        // } catch (err) {
+        //     await this.setState({ 
+        //         user_info_name: '',
+        //         user_info_email: '',
+        //         user_info_address: '',
+        //         user_info_phone_number: '',
+        //         user_info_education: [],
+        //         user_info_experience: [],
+
+        //         custom_css_name: {},
+        //         custom_css_user_info: {},
+        //         custom_css_section_title: {},
+        //         custom_css_university_company: {},
+        //         custom_css_course_position: {},
+        //         custom_css_date:  {},
+        //         custom_css_description: {},
+
+        //         custom_css_name_temp: JSON.stringify({}),
+        //         custom_css_user_info_temp: JSON.stringify({}),
+        //         custom_css_section_title_temp: JSON.stringify({}),
+        //         custom_css_university_company_temp: JSON.stringify({}),
+        //         custom_css_course_position_temp: JSON.stringify({}),
+        //         custom_css_date_temp: JSON.stringify({}),
+        //         custom_css_description_temp: JSON.stringify({}),
+
+        //         // cv_history: res[0].data.cv_history
+        //     })
+        //     console.log('err: ', err)
+        // }
+    // }
+
+    handleOnChange = (e) => {
         this.setState({ [e.target.id]: e.target.value })
     }
 
@@ -215,15 +191,43 @@ class App extends Component {
         console.log(this.state.user_info_experience)
     }
 
-    handleUploadCVToIPFS = async () => {
+    addFileToIPFS = async () => {
+        const { ipfs } = this.state 
+
         const cv = document.getElementById('cv-preview')
         const pdf_output = await html2pdf().from(cv).outputPdf()
         const cv_buffer = Buffer.from(pdf_output, 'binary')
-        // const uploaded_file = await ipfs.files.add(cv_buffer)
-        // console.log('uploaded_file: ', uploaded_file)
-        // await this.setState(prevState => ({
-        //     cv_history: [...prevState.cv_history, uploaded_file[0]]
-        // }))
+        const uploaded_file = await ipfs.add(cv_buffer)
+        console.log('uploaded_file: ', uploaded_file)
+        await this.setState(prevState => ({
+            cv_history: [...prevState.cv_history, uploaded_file[0]]
+        }))
+    }
+
+    uploadJSONToIPNS = async (data) => {
+        const { ipfs } = this.state 
+        const options = {
+            wrapWithDirectory: true,
+            onlyHash: false,
+            pin: true
+          }
+          // Create binary buffer from JSON string
+        const buf = Buffer.from(JSON.stringify(data))
+        const res = await ipfs.add({
+            path: 'json',
+            content: buf
+        }, options)
+        console.log('res: ', res)
+        const pub = await ipfs.name.publish(res[1].hash)
+        console.log('pub: ', pub)
+        console.log(`published '${pub.value}' to profile: ${pub.name}`)
+        console.log('resolving: ', pub.name)
+        const _idk = await ipfs.name.resolve(`/ipns/${pub.name}`)
+        console.log('_idk: ', _idk)
+    }
+
+    downloadFile = () => {
+        const cv = document.getElementById('cv-preview')
         let today = new Date()
         let dd = today.getDate()
         let mm = today.getMonth() + 1
@@ -239,7 +243,11 @@ class App extends Component {
         const filename = `${this.state.user_info_name}_${today}`
 
         html2pdf(cv, { filename })
+    }
 
+    handleUploadCVToIPFS = async () => {        
+        await this.addFileToIPFS()
+        
         const { 
             user_info_name, 
             user_info_email, 
@@ -256,9 +264,7 @@ class App extends Component {
             custom_css_course_position,
             custom_css_date,
             custom_css_description,
-            
-            db, 
-            public_hex, 
+    
             cv_history 
         } = this.state
         
@@ -281,15 +287,9 @@ class App extends Component {
             
             cv_history 
         }
-        console.log('ALL USER_INFO: ', data)
-        await db.put({ _id: public_hex, data })
-    }
 
-    onHexcodeChange = async (e) => {
-        e.preventDefault()
-
-        this.setState({ public_hex: e.target.value })
-        await this.getUser(e.target.value)
+        this.uploadJSONToIPNS(data)
+        this.downloadFile()
     }
     
     deleteEducation = (exp_id) => {
@@ -311,11 +311,7 @@ class App extends Component {
     }
 
     handleCustomCSSChange = (e) => {
-        console.log('value: ', e.target.value)
-        // console.log('asdf: ', JSON.parse(e.target.value), typeof JSON.parse(e.target.value))
-        // const new_css = Object.assign({}, JSON.parse(e.target.value))
         let key = `${e.target.id}_temp`
-
         this.setState({ [key]: e.target.value })
     }
 
@@ -326,21 +322,19 @@ class App extends Component {
                 console.log(`new_css for ${field}`, new_css, typeof new_css)
                 this.setState({ [field]: new_css })
             } catch (err) {
-                console.log('initial erros: ', this.state.errors)
                 let errors = this.state.errors.slice()
                 let error_field = field.slice(11, field.length)
                 error_field = error_field.replace(/_/g, '/')
-                console.log('error_field: ', error_field)
                 errors.push(error_field)
                 errors = [...new Set(errors)]
-                console.log('errors: ', errors)
+                
                 await this.setState({ errors })
             }
         }
     }
     
     render() {
-        const { public_hex } = this.state
+        const { id } = this.state
 
         return (
             <MDBContainer>
@@ -350,22 +344,79 @@ class App extends Component {
                 <MDBRow>
                     <MDBCol>
                         <p>Please save your <strong>hex code</strong> to access your information:</p>
-                        <MDBInput value={public_hex} onChange={this.onHexcodeChange}/>
+                        <MDBInput value={id} onChange={(e) => this.onHexcodeChange(e.target.value)}/>
                     </MDBCol>
                 </MDBRow>
                 
                 <MDBRow>
-                    <MDBCol>
+                    <MDBCol size="8">
                         <MDBBtn className="float-left" color="blue" onClick={() => this.setState({ mode: 'user-info'}) }>User Info</MDBBtn>
+                        <MDBBtn className="float-left" color="blue" onClick={() => this.setState({ mode: 'education'}) }>Education</MDBBtn>
+                        <MDBBtn className="float-left" color="blue" onClick={() => this.setState({ mode: 'experience'}) }>Experience</MDBBtn>
                         <MDBBtn className="float-left" color="blue" onClick={() => this.setState({ mode: 'custom-css'}) }>Custom CSS</MDBBtn>
                     </MDBCol>
-                    <MDBCol>
+                    <MDBCol size="4">
                         <MDBBtn className="float-right" color="green" onClick={this.handleUploadCVToIPFS}>Save Changes</MDBBtn>
                     </MDBCol>
                 </MDBRow>
                 <br />
                 <br />
                 <MDBRow>
+                    {this.state.mode === 'education' ?
+                        <MDBCol>
+                            <MDBBtn className="float-right" color="primary" onClick={() => this.setState({ education_modal: !this.state.education_modal })}>Add Education</MDBBtn>
+                            <br/>
+                            <br/>
+                            <br/>
+                            <div>
+                                {this.state.user_info_education.map((e) => {
+                                    return (
+                                        <MDBCard className="w-100 mb-4">
+                                            <MDBCardBody>
+                                                <MDBCardTitle>{e.school}<MDBBtn className="float-right" color="danger" size="sm" onClick={() => this.deleteEducation(e._id)}>x</MDBBtn></MDBCardTitle>
+                                                <MDBCardText>
+                                                    {e.degree} - {e.course}
+                                                    <br/>
+                                                    {e.education_start_date} - {e.education_end_date}
+                                                </MDBCardText>
+                                            </MDBCardBody>
+                                        </MDBCard>
+                                    )
+                                })}
+                            </div>
+                        </MDBCol>
+                        :
+                        <div></div>
+                    }
+                    {this.state.mode === 'experience' ?
+                        <MDBCol>
+                                <MDBBtn className="float-right" color="primary" onClick={() => this.setState({ experience_modal: !this.state.experience_modal })}>Add Experience</MDBBtn>
+                                <br/>
+                                <br/>
+                                <br/>
+                                <div>
+                                    {this.state.user_info_experience.map((e) => {
+                                        return (
+                                            <MDBCard className="w-100 mb-4">
+                                                <MDBCardBody>
+                                                    <MDBCardTitle>{e.company}<MDBBtn className="float-right" color="danger" size="sm" onClick={() => this.deleteExperience(e._id)}>x</MDBBtn></MDBCardTitle>
+                                                    <MDBCardText>
+                                                        {e.position}
+                                                        <br/>
+                                                        {e.experience_start_date} - {e.experience_end_date}
+                                                        <br/>
+                                                        {e.job_description}
+                                                    </MDBCardText>
+                                                </MDBCardBody>
+                                            </MDBCard>
+                                        )
+                                    })}
+                                </div>
+
+                        </MDBCol>
+                        :
+                        <div></div>
+                    }
                     {this.state.mode === 'user-info' ?
                         <MDBCol>
                             <MDBRow>
@@ -420,58 +471,12 @@ class App extends Component {
                                     />
                                 </MDBCol>
                             </MDBRow>
-                            <MDBRow>
-                                <MDBCol><h1 class="h4 mb-4">Education</h1></MDBCol>
-                                <MDBCol><MDBBtn color="primary" size="sm" onClick={() => this.setState({ education_modal: !this.state.education_modal })}>+</MDBBtn></MDBCol>
-                            </MDBRow>
-                            <div>
-                                {this.state.user_info_education.map((e) => {
-                                    return (
-                                        <MDBCard className="w-75 mb-4">
-                                            <MDBCardBody>
-                                                <MDBCardTitle>{e.school}<MDBBtn className="float-right" color="danger" size="sm" onClick={() => this.deleteEducation(e._id)}>x</MDBBtn></MDBCardTitle>
-                                                <MDBCardText>
-                                                    {e.degree} - {e.course}
-                                                    <br/>
-                                                    {e.education_start_date} - {e.education_end_date}
-                                                </MDBCardText>
-                                            </MDBCardBody>
-                                        </MDBCard>
-                                    )
-                                })}
-                            </div>
-                            <br/>
-                            <MDBRow>
-                                <MDBCol><h1 class="h4 mb-4">Experience</h1></MDBCol>
-                                <MDBCol><MDBBtn color="primary" size="sm" onClick={() => this.setState({ experience_modal: !this.state.experience_modal })}>+</MDBBtn></MDBCol>
-                            </MDBRow>
-                            <div>
-                                {this.state.user_info_experience.map((e) => {
-                                    return (
-                                        <MDBCard className="w-75 mb-4">
-                                            <MDBCardBody>
-                                                <MDBCardTitle>{e.company}<MDBBtn className="float-right" color="danger" size="sm" onClick={() => this.deleteExperience(e._id)}>x</MDBBtn></MDBCardTitle>
-                                                <MDBCardText>
-                                                    {e.position}
-                                                    <br/>
-                                                    {e.experience_start_date} - {e.experience_end_date}
-                                                    <br/>
-                                                    {e.job_description}
-                                                </MDBCardText>
-                                            </MDBCardBody>
-                                        </MDBCard>
-                                    )
-                                })}
-                            </div>
                         </MDBCol>
                         :
                         <div></div>
                     }
                     {this.state.mode === 'custom-css' ?
                         <MDBCol>
-                            <MDBRow>
-                                <MDBCol><h1 class="h4 mb-4">Custom CSS</h1></MDBCol>
-                            </MDBRow>
                             <MDBInput
                                 type="textarea"
                                 rows="2"
